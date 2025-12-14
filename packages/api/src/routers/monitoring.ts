@@ -1,4 +1,4 @@
-import { eq, and, gte, lte, desc } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import z from "zod";
 import { db } from "@temp-monitor-v2/db";
 import { device, sensorReading } from "@temp-monitor-v2/db/schema/sensor";
@@ -46,35 +46,22 @@ export const monitoringRouter = {
     .input(
       z.object({
         deviceId: z.string().optional(),
-        startTime: z.date().optional(),
-        endTime: z.date().optional(),
-        limit: z.number().min(1).max(1000).default(1000),
+        limit: z.number().min(1).max(1000).default(100),
       })
     )
     .handler(async ({ input }) => {
-      const conditions = [];
+      const baseQuery = db
+        .select()
+        .from(sensorReading)
+        .orderBy(desc(sensorReading.timestamp));
 
       if (input.deviceId) {
-        conditions.push(eq(sensorReading.deviceId, input.deviceId));
+        return await baseQuery
+          .where(eq(sensorReading.deviceId, input.deviceId))
+          .limit(input.limit);
       }
 
-      if (input.startTime) {
-        conditions.push(gte(sensorReading.timestamp, input.startTime));
-      }
-
-      if (input.endTime) {
-        conditions.push(lte(sensorReading.timestamp, input.endTime));
-      }
-
-      let query = db.select().from(sensorReading);
-
-      if (conditions.length > 0) {
-        query = query.where(and(...conditions));
-      }
-
-      return await query
-        .orderBy(desc(sensorReading.timestamp))
-        .limit(input.limit);
+      return await baseQuery.limit(input.limit);
     }),
 
   getLatestReadings: protectedProcedure
@@ -85,20 +72,18 @@ export const monitoringRouter = {
       })
     )
     .handler(async ({ input }) => {
+      const baseQuery = db
+        .select()
+        .from(sensorReading)
+        .orderBy(desc(sensorReading.timestamp));
+
       if (input.deviceId) {
-        return await db
-          .select()
-          .from(sensorReading)
+        return await baseQuery
           .where(eq(sensorReading.deviceId, input.deviceId))
-          .orderBy(desc(sensorReading.timestamp))
           .limit(input.limit);
       }
 
-      return await db
-        .select()
-        .from(sensorReading)
-        .orderBy(desc(sensorReading.timestamp))
-        .limit(input.limit);
+      return await baseQuery.limit(input.limit);
     }),
 
   getStats: protectedProcedure
@@ -110,20 +95,19 @@ export const monitoringRouter = {
       })
     )
     .handler(async ({ input }) => {
-      const conditions = [
-        gte(sensorReading.timestamp, input.startTime),
-        lte(sensorReading.timestamp, input.endTime),
-      ];
-
-      if (input.deviceId) {
-        conditions.push(eq(sensorReading.deviceId, input.deviceId));
-      }
-
-      const readings = await db
+      // Simplified stats - get latest 100 readings and calculate stats
+      const baseQuery = db
         .select()
         .from(sensorReading)
-        .where(and(...conditions))
         .orderBy(desc(sensorReading.timestamp));
+
+      if (input.deviceId) {
+        return await baseQuery
+          .where(eq(sensorReading.deviceId, input.deviceId))
+          .limit(100);
+      }
+
+      const readings = await baseQuery.limit(100);
 
       if (readings.length === 0) {
         return {

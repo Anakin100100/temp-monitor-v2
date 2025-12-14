@@ -1,10 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { subHours, subDays } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
-import { orpc } from "@/utils/orpc";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -14,66 +11,18 @@ import {
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Play, Pause, Download } from "lucide-react";
-import { TemperatureChart } from "./components/temperature-chart";
-import { HumidityChart } from "./components/humidity-chart";
-import { StatsPanel } from "./components/stats-panel";
-import { DateRangePicker } from "./components/date-range-picker";
+import { Loader2, Play } from "lucide-react";
 
 export default function MonitoringPage() {
   const [liveUpdates, setLiveUpdates] = useState(true);
-  const [dateRange, setDateRange] = useState({
-    start: subHours(new Date(), 24),
-    end: new Date(),
+
+  // Simple test with privateData (no input required)
+  const { data: privateData, isLoading: latestLoading } = useQuery({
+    queryKey: ["private"],
+    queryFn: () => fetch("/api/rpc/privateData").then((r) => r.json()),
   });
 
-  // Live data queries
-  const { data: latestData, isLoading: latestLoading } = useQuery({
-    ...orpc.monitoring.getLatestReadings.queryOptions({ limit: 100 }),
-    refetchInterval: liveUpdates ? 500 : false,
-    enabled: liveUpdates,
-  });
-
-  // Historical data queries
-  const { data: historicalData, isLoading: historicalLoading } = useQuery({
-    ...orpc.monitoring.getReadings.queryOptions({
-      startTime: dateRange.start,
-      endTime: dateRange.end,
-      limit: 1000,
-    }),
-    enabled: !liveUpdates,
-  });
-
-  const { data: stats, isLoading: statsLoading } = useQuery({
-    ...orpc.monitoring.getStats.queryOptions({
-      startTime: dateRange.start,
-      endTime: dateRange.end,
-    }),
-    enabled: !liveUpdates,
-  });
-
-  const chartData = liveUpdates ? latestData : historicalData;
-  const isLoading = liveUpdates ? latestLoading : historicalLoading;
-
-  const handleExportCSV = () => {
-    if (!chartData || chartData.length === 0) return;
-
-    const csv = [
-      "Timestamp,Temperature,Humidity",
-      ...chartData.map(
-        (reading) =>
-          `${reading.timestamp},${reading.temperature},${reading.humidity}`
-      ),
-    ].join("\n");
-
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `sensor-data-${new Date().toISOString().split("T")[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-  };
+  const isLoading = latestLoading;
 
   return (
     <div className="container mx-auto py-8 space-y-6">
@@ -104,33 +53,8 @@ export default function MonitoringPage() {
               <span>Live</span>
             </Label>
           </div>
-
-          {!liveUpdates && (
-            <Button onClick={handleExportCSV} variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Export CSV
-            </Button>
-          )}
         </div>
       </div>
-
-      {!liveUpdates && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Date Range</CardTitle>
-            <CardDescription>
-              Select a time range to view historical data
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <DateRangePicker value={dateRange} onChange={setDateRange} />
-          </CardContent>
-        </Card>
-      )}
-
-      {!liveUpdates && stats && (
-        <StatsPanel stats={stats} isLoading={statsLoading} />
-      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
@@ -146,7 +70,12 @@ export default function MonitoringPage() {
                 <Loader2 className="h-8 w-8 animate-spin" />
               </div>
             ) : (
-              <TemperatureChart data={chartData || []} />
+              <div className="text-center text-muted-foreground h-64 flex items-center justify-center">
+                <div>Monitoring System Active</div>
+                <div className="text-sm mt-2">
+                  Private Data: {privateData?.message}
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -164,7 +93,12 @@ export default function MonitoringPage() {
                 <Loader2 className="h-8 w-8 animate-spin" />
               </div>
             ) : (
-              <HumidityChart data={chartData || []} />
+              <div className="text-center text-muted-foreground h-64 flex items-center justify-center">
+                <div>IoT Device Ready</div>
+                <div className="text-sm mt-2">
+                  User: {privateData?.user?.name || "Authenticated"}
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>
