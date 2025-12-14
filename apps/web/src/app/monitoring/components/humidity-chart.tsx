@@ -13,17 +13,22 @@ import { format } from "date-fns";
 
 interface HumidityChartProps {
   data: Array<{
-    timestamp: Date;
+    id: number;
+    deviceId: string;
     temperature: number;
     humidity: number;
+    timestamp: Date;
   }>;
 }
 
 export function HumidityChart({ data }: HumidityChartProps) {
-  const chartData = data.map((reading) => ({
-    time: format(new Date(reading.timestamp), "HH:mm:ss"),
-    humidity: reading.humidity,
-  }));
+  const chartData = data
+    .slice()
+    .reverse()
+    .map((reading) => ({
+      time: format(new Date(reading.timestamp), "HH:mm:ss"),
+      humidity: reading.humidity,
+    }));
 
   return (
     <ResponsiveContainer width="100%" height={250}>

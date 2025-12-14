@@ -13,17 +13,22 @@ import { format } from "date-fns";
 
 interface TemperatureChartProps {
   data: Array<{
-    timestamp: Date;
+    id: number;
+    deviceId: string;
     temperature: number;
     humidity: number;
+    timestamp: Date;
   }>;
 }
 
 export function TemperatureChart({ data }: TemperatureChartProps) {
-  const chartData = data.map((reading) => ({
-    time: format(new Date(reading.timestamp), "HH:mm:ss"),
-    temperature: reading.temperature,
-  }));
+  const chartData = data
+    .slice()
+    .reverse()
+    .map((reading) => ({
+      time: format(new Date(reading.timestamp), "HH:mm:ss"),
+      temperature: reading.temperature,
+    }));
 
   return (
     <ResponsiveContainer width="100%" height={250}>

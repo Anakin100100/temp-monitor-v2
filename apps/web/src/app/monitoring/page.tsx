@@ -13,6 +13,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Loader2, Play } from "lucide-react";
+import { TemperatureChart } from "./components/temperature-chart";
+import { HumidityChart } from "./components/humidity-chart";
 
 export default function MonitoringPage() {
   const [liveUpdates, setLiveUpdates] = useState(true);
@@ -82,15 +84,11 @@ export default function MonitoringPage() {
               <div className="flex justify-center items-center h-64">
                 <Loader2 className="h-8 w-8 animate-spin" />
               </div>
+            ) : latestData && latestData.length > 0 ? (
+              <TemperatureChart data={latestData} />
             ) : (
               <div className="text-center text-muted-foreground h-64 flex items-center justify-center">
-                <div>Monitoring System Active</div>
-                <div className="text-sm mt-2">
-                  Private Data: {privateData?.message}
-                </div>
-                <div className="text-sm mt-2">
-                  Readings: {latestData?.length || 0}
-                </div>
+                No temperature data available
               </div>
             )}
           </CardContent>
@@ -108,15 +106,11 @@ export default function MonitoringPage() {
               <div className="flex justify-center items-center h-64">
                 <Loader2 className="h-8 w-8 animate-spin" />
               </div>
+            ) : latestData && latestData.length > 0 ? (
+              <HumidityChart data={latestData} />
             ) : (
               <div className="text-center text-muted-foreground h-64 flex items-center justify-center">
-                <div>IoT Device Ready</div>
-                <div className="text-sm mt-2">
-                  User: {privateData?.user?.name || "Authenticated"}
-                </div>
-                <div className="text-sm mt-2">
-                  Device: {latestData?.[0]?.deviceId || "No data"}
-                </div>
+                No humidity data available
               </div>
             )}
           </CardContent>
