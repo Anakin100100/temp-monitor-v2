@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { orpc } from "@/utils/orpc";
 import {
   Card,
   CardContent,
@@ -16,13 +17,25 @@ import { Loader2, Play } from "lucide-react";
 export default function MonitoringPage() {
   const [liveUpdates, setLiveUpdates] = useState(true);
 
-  // Simple test with privateData (no input required)
-  const { data: privateData, isLoading: latestLoading } = useQuery({
-    queryKey: ["private"],
-    queryFn: () => fetch("/api/rpc/privateData").then((r) => r.json()),
+  // Get private data and monitoring data using proper oRPC client
+  const { data: privateData, isLoading: privateLoading } = useQuery(
+    orpc.privateData.queryOptions()
+  );
+
+  // Get monitoring data
+  const { data: latestData, isLoading: dataLoading } = useQuery({
+    queryKey: ["monitoring", "latest"],
+    queryFn: () =>
+      fetch("/api/rpc/api-reference/monitoring/getLatestReadings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ limit: 100 }),
+      }).then((r) => r.json()),
+    refetchInterval: liveUpdates ? 500 : false,
+    enabled: liveUpdates,
   });
 
-  const isLoading = latestLoading;
+  const isLoading = privateLoading || dataLoading;
 
   return (
     <div className="container mx-auto py-8 space-y-6">
@@ -75,6 +88,9 @@ export default function MonitoringPage() {
                 <div className="text-sm mt-2">
                   Private Data: {privateData?.message}
                 </div>
+                <div className="text-sm mt-2">
+                  Readings: {latestData?.length || 0}
+                </div>
               </div>
             )}
           </CardContent>
@@ -98,11 +114,43 @@ export default function MonitoringPage() {
                 <div className="text-sm mt-2">
                   User: {privateData?.user?.name || "Authenticated"}
                 </div>
+                <div className="text-sm mt-2">
+                  Device: {latestData?.[0]?.deviceId || "No data"}
+                </div>
               </div>
             )}
           </CardContent>
         </Card>
       </div>
+
+      {latestData && latestData.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="p-4 border rounded-lg">
+            <div className="text-sm font-medium">Latest Temperature</div>
+            <div className="text-2xl font-bold">
+              {latestData[0]?.temperature || 0}°C
+            </div>
+          </div>
+          <div className="p-4 border rounded-lg">
+            <div className="text-sm font-medium">Latest Humidity</div>
+            <div className="text-2xl font-bold">
+              {latestData[0]?.humidity || 0}%
+            </div>
+          </div>
+          <div className="p-4 border rounded-lg">
+            <div className="text-sm font-medium">Total Readings</div>
+            <div className="text-2xl font-bold">
+              {latestData.length.toLocaleString()}
+            </div>
+          </div>
+          <div className="p-4 border rounded-lg">
+            <div className="text-sm font-medium">Device ID</div>
+            <div className="text-lg font-bold">
+              {latestData[0]?.deviceId || "N/A"}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

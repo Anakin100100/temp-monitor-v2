@@ -30,11 +30,14 @@ export const monitoringRouter = {
       }
 
       // Add sensor reading
-      return await db.insert(sensorReading).values({
+      await db.insert(sensorReading).values({
         deviceId: input.deviceId,
         temperature: input.temperature,
         humidity: input.humidity,
       });
+
+      // Return success response
+      return { success: true, message: "Reading recorded successfully" };
     }),
 
   // User endpoints
@@ -50,18 +53,20 @@ export const monitoringRouter = {
       })
     )
     .handler(async ({ input }) => {
-      const baseQuery = db
-        .select()
-        .from(sensorReading)
-        .orderBy(desc(sensorReading.timestamp));
-
       if (input.deviceId) {
-        return await baseQuery
+        return await db
+          .select()
+          .from(sensorReading)
           .where(eq(sensorReading.deviceId, input.deviceId))
+          .orderBy(desc(sensorReading.timestamp))
           .limit(input.limit);
       }
 
-      return await baseQuery.limit(input.limit);
+      return await db
+        .select()
+        .from(sensorReading)
+        .orderBy(desc(sensorReading.timestamp))
+        .limit(input.limit);
     }),
 
   getLatestReadings: protectedProcedure
@@ -72,18 +77,20 @@ export const monitoringRouter = {
       })
     )
     .handler(async ({ input }) => {
-      const baseQuery = db
-        .select()
-        .from(sensorReading)
-        .orderBy(desc(sensorReading.timestamp));
-
       if (input.deviceId) {
-        return await baseQuery
+        return await db
+          .select()
+          .from(sensorReading)
           .where(eq(sensorReading.deviceId, input.deviceId))
+          .orderBy(desc(sensorReading.timestamp))
           .limit(input.limit);
       }
 
-      return await baseQuery.limit(input.limit);
+      return await db
+        .select()
+        .from(sensorReading)
+        .orderBy(desc(sensorReading.timestamp))
+        .limit(input.limit);
     }),
 
   getStats: protectedProcedure
@@ -96,18 +103,11 @@ export const monitoringRouter = {
     )
     .handler(async ({ input }) => {
       // Simplified stats - get latest 100 readings and calculate stats
-      const baseQuery = db
+      let readings = await db
         .select()
         .from(sensorReading)
-        .orderBy(desc(sensorReading.timestamp));
-
-      if (input.deviceId) {
-        return await baseQuery
-          .where(eq(sensorReading.deviceId, input.deviceId))
-          .limit(100);
-      }
-
-      const readings = await baseQuery.limit(100);
+        .orderBy(desc(sensorReading.timestamp))
+        .limit(100);
 
       if (readings.length === 0) {
         return {
