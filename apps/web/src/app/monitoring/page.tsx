@@ -28,30 +28,23 @@ export default function MonitoringPage() {
 
   // Get monitoring data
   const { data: latestData, isLoading: dataLoading } = useQuery({
-    queryKey: ["monitoring", liveUpdates ? "live" : `historical-${timeRange}`],
+    queryKey: [
+      "monitoring",
+      liveUpdates ? `live-${timeRange}` : `historical-${timeRange}`,
+    ],
     queryFn: () => {
-      if (liveUpdates) {
-        // Live mode: get latest readings
-        return fetch("/api/rpc/api-reference/monitoring/getLatestReadings", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ limit: 100 }),
-        }).then((r) => r.json());
-      } else {
-        // Historical mode: get readings for time range
-        const endTime = new Date();
-        const startTime = new Date(endTime.getTime() - timeRange * 60 * 1000); // minutes to milliseconds
+      const endTime = new Date();
+      const startTime = new Date(endTime.getTime() - timeRange * 60 * 1000); // minutes to milliseconds
 
-        return fetch("/api/rpc/api-reference/monitoring/getReadings", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            startTime: startTime.toISOString(),
-            endTime: endTime.toISOString(),
-            limit: 1000,
-          }),
-        }).then((r) => r.json());
-      }
+      return fetch("/api/rpc/api-reference/monitoring/getReadings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+          limit: 1000,
+        }),
+      }).then((r) => r.json());
     },
     refetchInterval: liveUpdates ? 500 : false,
     enabled: true,
@@ -91,16 +84,21 @@ export default function MonitoringPage() {
         </div>
       </div>
 
-      {!liveUpdates && (
-        <Card className="max-w-md">
-          <CardHeader>
-            <CardTitle className="text-lg">Historical Data Settings</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <TimeRangeSelector value={timeRange} onChange={setTimeRange} />
-          </CardContent>
-        </Card>
-      )}
+      <Card className="max-w-md">
+        <CardHeader>
+          <CardTitle className="text-lg">
+            {liveUpdates ? "Live Data Window" : "Historical Data Settings"}
+          </CardTitle>
+          <CardDescription>
+            {liveUpdates
+              ? "Select time window for live data display"
+              : "Select time range for historical data analysis"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <TimeRangeSelector value={timeRange} onChange={setTimeRange} />
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
