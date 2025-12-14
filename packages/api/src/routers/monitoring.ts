@@ -1,4 +1,4 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, gte, lte, and } from "drizzle-orm";
 import z from "zod";
 import { db } from "@temp-monitor-v2/db";
 import { device, sensorReading } from "@temp-monitor-v2/db/schema/sensor";
@@ -49,24 +49,58 @@ export const monitoringRouter = {
     .input(
       z.object({
         deviceId: z.string().optional(),
+        startTime: z.string().optional(), // ISO string
+        endTime: z.string().optional(), // ISO string
         limit: z.number().min(1).max(1000).default(100),
       })
     )
     .handler(async ({ input }) => {
+      // Build conditions array
+      const conditions = [];
+
       if (input.deviceId) {
+        conditions.push(eq(sensorReading.deviceId, input.deviceId));
+      }
+
+      if (input.startTime) {
+        conditions.push(
+          gte(sensorReading.timestamp, new Date(input.startTime))
+        );
+      }
+
+      if (input.endTime) {
+        conditions.push(lte(sensorReading.timestamp, new Date(input.endTime)));
+      }
+
+      // Execute query based on conditions
+      if (conditions.length === 0) {
         return await db
           .select()
           .from(sensorReading)
-          .where(eq(sensorReading.deviceId, input.deviceId))
+          .orderBy(desc(sensorReading.timestamp))
+          .limit(input.limit);
+      } else if (conditions.length === 1) {
+        return await db
+          .select()
+          .from(sensorReading)
+          .where(conditions[0])
+          .orderBy(desc(sensorReading.timestamp))
+          .limit(input.limit);
+      } else if (conditions.length === 2) {
+        return await db
+          .select()
+          .from(sensorReading)
+          .where(and(conditions[0], conditions[1]))
+          .orderBy(desc(sensorReading.timestamp))
+          .limit(input.limit);
+      } else {
+        return await db
+          .select()
+          .from(sensorReading)
+          .where(and(conditions[0], conditions[1], conditions[2]))
           .orderBy(desc(sensorReading.timestamp))
           .limit(input.limit);
       }
-
-      return await db
-        .select()
-        .from(sensorReading)
-        .orderBy(desc(sensorReading.timestamp))
-        .limit(input.limit);
     }),
 
   getLatestReadings: protectedProcedure
